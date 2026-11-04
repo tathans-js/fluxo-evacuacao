@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evacuação por Fluxo Máximo — Ford-Fulkerson</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Planejador de Evacuação <span>· Fluxo máximo com Ford-Fulkerson</span></h1>
+  <div id="status">Carregando…</div>
+</header>
+
+<main>
+  <!-- ===================== PAINEL ESQUERDO ===================== -->
+  <aside id="esquerda">
+    <section>
+      <h2>1. Instância</h2>
+      <select id="selInstancia"></select>
+      <div class="linha">
+        <button id="btnCarregar">Carregar</button>
+        <button id="btnExportar" title="Baixar a instância atual (com edições) em JSON">Exportar JSON</button>
+      </div>
+      <label class="arquivo">Importar arquivo (.json ou .csv)
+        <input type="file" id="arqImportar" accept=".json,.csv,.txt">
+      </label>
+      <details>
+        <summary>Gerar cidade sintética</summary>
+        <div class="grade2">
+          <label>Linhas <input type="number" id="gLinhas" value="20" min="2" max="200"></label>
+          <label>Colunas <input type="number" id="gColunas" value="20" min="2" max="200"></label>
+          <label>Semente <input type="number" id="gSemente" value="42"></label>
+          <label>Mão única (%) <input type="number" id="gMaoUnica" value="30" min="0" max="100"></label>
+          <label>Ruas removidas (%) <input type="number" id="gRemocao" value="8" min="0" max="60"></label>
+          <label>Raio zona (fração) <input type="number" id="gRaio" value="0.2" step="0.05" min="0.05" max="0.5"></label>
+        </div>
+        <button id="btnGerar">Gerar</button>
+      </details>
+      <p id="infoInstancia" class="pequeno"></p>
+    </section>
+
+    <section>
+      <h2>2. Cenário</h2>
+      <div class="modos" id="modos">
+        <button data-modo="selecionar" class="ativo" title="Clique em vias/cruzamentos para ver detalhes">Selecionar</button>
+        <button data-modo="origem" title="Clique em cruzamentos para marcar/desmarcar como ORIGEM">Origem</button>
+        <button data-modo="destino" title="Clique em cruzamentos para marcar/desmarcar como DESTINO (abrigo/saída)">Destino</button>
+        <button data-modo="zona" title="Clique no mapa para definir o centro da zona de risco">Zona de risco</button>
+        <button data-modo="bloquear" title="Clique em uma via para interditar/liberar (os dois sentidos)">Interditar via</button>
+        <button data-modo="aresta" title="Clique em dois cruzamentos para criar uma via">Nova via</button>
+      </div>
+      <div class="grade2">
+        <label>Raio da zona <input type="number" id="raioZona" value="800" min="1"></label>
+        <label>Veículos na zona <input type="number" id="veiculos" value="3000" min="0"></label>
+        <label>Cap. nova via <input type="number" id="capNova" value="1000" min="1"></label>
+        <label class="check"><input type="checkbox" id="maoDupla" checked> mão dupla</label>
+      </div>
+      <div class="linha">
+        <button id="btnSaidas" title="Usa como destino todos os pontos de saída da área">Saídas → destinos</button>
+        <button id="btnLimpar">Limpar seleção</button>
+      </div>
+      <p class="pequeno"><b id="nOrigens">0</b> origens · <b id="nDestinos">0</b> destinos · <b id="nBloq">0</b> vias interditadas</p>
+    </section>
+
+    <section>
+      <h2>3. Execução</h2>
+      <label class="radio"><input type="radio" name="estrategia" value="dfs" checked> DFS — Ford-Fulkerson clássico</label>
+      <label class="radio"><input type="radio" name="estrategia" value="bfs"> BFS — variante Edmonds-Karp</label>
+      <div class="linha">
+        <button id="btnExecutar" class="primario">▶ Executar</button>
+        <button id="btnComparar">Comparar DFS × BFS</button>
+      </div>
+      <div id="comparacao"></div>
+    </section>
+  </aside>
+
+  <!-- ===================== CENTRO: MAPA ===================== -->
+  <section id="centro">
+    <div id="barraVisao">
+      <div class="abas" id="abasVisao">
+        <button data-visao="capacidade">Capacidades</button>
+        <button data-visao="fluxo" class="ativo">Fluxo</button>
+        <button data-visao="residual">Rede residual</button>
+      </div>
+      <label class="check"><input type="checkbox" id="chkCorte" checked> corte mínimo</label>
+      <label class="check"><input type="checkbox" id="chkRotulos"> rótulos</label>
+      <button id="btnEnquadrar" title="Enquadrar a rede">⤢</button>
+    </div>
+    <div id="mapaWrap">
+      <canvas id="mapa"></canvas>
+      <div id="legenda"></div>
+      <div id="dica"></div>
+    </div>
+    <div id="passos">
+      <button id="pInicio" title="Fluxo zero">⏮</button>
+      <button id="pAnt" title="Caminho anterior">◀</button>
+      <button id="pPlay" title="Animar">⏵</button>
+      <button id="pProx" title="Próximo caminho">▶</button>
+      <button id="pFim" title="Fluxo máximo final">⏭</button>
+      <input type="range" id="pSlider" min="0" max="0" value="0">
+      <span id="pRotulo">—</span>
+    </div>
+  </section>
+
+  <!-- ===================== PAINEL DIREITO ===================== -->
+  <aside id="direita">
+    <section>
+      <h2>Resultado</h2>
+      <div id="resultado"><p class="pequeno">Execute o algoritmo para ver o fluxo máximo.</p></div>
+    </section>
+    <section>
+      <h2>Detalhes</h2>
+      <div id="detalhes"><p class="pequeno">Clique em uma via ou cruzamento.</p></div>
+    </section>
+    <section class="cresce">
+      <h2>Caminhos aumentantes</h2>
+      <div id="caminhos"></div>
+    </section>
+  </aside>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

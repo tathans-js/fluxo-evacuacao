@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Relatório Técnico — Planejador de Evacuação por Fluxo Máximo</title>
+<style>
+  @page { size: A4; margin: 2.2cm 2cm 2.2cm 2cm; }
+  body { font-family: "Times New Roman", Times, serif; font-size: 11.5pt; line-height: 1.45; color: #111; }
+  h1 { font-size: 20pt; text-align: center; margin: 0 0 6pt; }
+  h2 { font-size: 14pt; margin: 18pt 0 6pt; border-bottom: 1px solid #999; padding-bottom: 2pt; page-break-after: avoid; }
+  h3 { font-size: 12pt; margin: 12pt 0 4pt; page-break-after: avoid; }
+  p { text-align: justify; margin: 4pt 0 6pt; }
+  table { border-collapse: collapse; margin: 6pt auto 10pt; font-size: 10pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #888; padding: 3pt 6pt; text-align: left; }
+  th { background: #eee; }
+  td.n { text-align: right; }
+  figure { margin: 8pt 0 12pt; text-align: center; page-break-inside: avoid; }
+  figure img { max-width: 100%; border: 1px solid #ccc; }
+  figcaption { font-size: 9.5pt; color: #333; margin-top: 3pt; }
+  pre, code { font-family: Menlo, Consolas, monospace; font-size: 9pt; }
+  pre { background: #f5f5f5; border: 1px solid #ddd; padding: 6pt 8pt; page-break-inside: avoid; white-space: pre-wrap; }
+  .capa { text-align: center; page-break-after: always; padding-top: 4cm; }
+  .capa p { text-align: center; }
+  .capa .sub { font-size: 14pt; margin-bottom: 3cm; }
+  .sumario li { margin: 2pt 0; }
+  .dois { display: flex; gap: 10pt; } .dois figure { flex: 1; }
+  .nota { font-size: 9.5pt; color: #444; }
+</style>
+</head>
+<body>
+
+<div class="capa">
+  <p>Centro Universitário Sagrado Coração (UNISAGRADO)<br>Ciência da Computação — Teoria dos Grafos<br>Prof. Patrick Pedreira</p>
+  <br><br>
+  <h1>Planejador de Evacuação Urbana<br>por Fluxo Máximo</h1>
+  <p class="sub">Tema 7 — Fluxo em Grafos (algoritmo de Ford-Fulkerson)</p>
+  <p><b>Integrantes</b><br>
+    Pedro Henrique Teixeira Moroni — RA 23110956<br>Jonathans David da Silva P Jr — RA 23110246<br>Guilherme de Oliveira Lazari — RA 23110982<br>Lucas Soares de Almeida — RA 23210133</p>
+  <br><br><br>
+  <p>Repositório: https://github.com/tathans-js/fluxo-evacuacao<br>Bauru/SP, novembro de 2026</p>
+</div>
+
+<h2>Sumário</h2>
+<ol class="sumario">
+  <li>Identificação do projeto</li><li>Descrição e relevância do problema</li><li>Origem e características dos dados</li>
+  <li>Modelagem como grafo</li><li>Fundamentação e descrição do algoritmo</li><li>Arquitetura e implementação</li>
+  <li>Metodologia de testes</li><li>Resultados obtidos</li><li>Limitações e possibilidades de melhoria</li>
+  <li>Contribuições individuais</li><li>Uso de ferramentas de IA</li><li>Referências</li>
+</ol>
+
+<h2>1. Identificação do projeto</h2>
+<p><b>Projeto:</b> Planejador de Evacuação Urbana por Fluxo Máximo. <b>Tema:</b> 7, Fluxo em Grafos.
+<b>Algoritmo obrigatório:</b> Ford-Fulkerson. <b>Integrantes:</b> Pedro Henrique Teixeira Moroni (RA 23110956); Jonathans David da Silva P Jr (RA 23110246); Guilherme de Oliveira Lazari (RA 23110982); Lucas Soares de Almeida (RA 23210133). <b>Instituição:</b> UNISAGRADO, Bauru/SP, Ciência da Computação. <b>Professor:</b> Patrick Pedreira.</p>
+<p>A aplicação é web e roda localmente: o servidor e o algoritmo são em Python, a interface em HTML/JavaScript.
+Ela calcula o fluxo máximo de veículos que conseguem sair de uma zona de risco pela malha viária real de uma
+cidade e mostra o fluxo em cada rua, os caminhos aumentantes, a rede residual e o corte mínimo (os gargalos).</p>
+
+<h2>2. Descrição e relevância do problema</h2>
+<p>O Brasil teve vários desastres recentes em que foi preciso evacuar áreas urbanas às pressas. Em Brumadinho
+(MG), o rompimento da barragem B1 da mina Córrego do Feijão em janeiro de 2019 deixou 272 mortos. Em Petrópolis
+(RJ), as chuvas de fevereiro de 2022 provocaram enchentes e deslizamentos com mais de 230 mortos. Nos dois casos
+a capacidade da malha viária de tirar as pessoas da área atingida é um fator crítico. Cidades de serra ou de
+vale costumam ter poucas saídas e muitas ruas estreitas e de mão única.</p>
+<p>A pergunta que o projeto responde é: <i>dada uma zona de risco e os pontos seguros, qual é o maior número de
+veículos por hora que a rede viária consegue escoar, e quais ruas limitam esse valor?</i> Esse é exatamente o
+problema do fluxo máximo. O resultado é útil no planejamento de três formas:</p>
+<ul>
+  <li><b>Tempo mínimo de evacuação:</b> se há <i>N</i> veículos na zona e o fluxo máximo é <i>F</i> veículos/h,
+  a evacuação leva pelo menos <i>N/F</i> horas, mesmo com o trânsito perfeitamente organizado;</li>
+  <li><b>Gargalos:</b> pelo teorema do fluxo máximo/corte mínimo, as ruas do corte mínimo são as únicas cujo
+  aumento de capacidade (agentes de trânsito, contrafluxo, liberação de faixas) pode aumentar a vazão;</li>
+  <li><b>Cenários "e se":</b> interditar uma ponte ou rua alagada e ver o impacto na hora.</li>
+</ul>
+<p>O problema não dá para resolver à mão nas instâncias reais. A rede de Petrópolis tem 1174 cruzamentos,
+2341 arcos, 182 origens e 6 saídas, e a solução precisou de 88 caminhos aumentantes com até 159 arcos cada.</p>
+
+<h2>3. Origem e características dos dados</h2>
+<h3>3.1 Malha viária (dados reais)</h3>
+<p>A malha viária foi baixada do <b>OpenStreetMap</b> (OSM) pela Overpass API em 04/11/2026
+(<code>scripts/baixar_osm.py</code>). A consulta pega todas as vias com tag <code>highway</code> das classes
+motorway, trunk, primary, secondary, tertiary, unclassified, residential e living_street (e as alças
+<code>_link</code>), dentro de um retângulo em volta de cada cidade. Os arquivos brutos estão em <code>data/raw/</code>.
+Os dados são © colaboradores do OpenStreetMap, sob licença ODbL.</p>
+<table>
+  <tr><th>Cidade</th><th>Nós OSM</th><th>Vias OSM</th><th>Vértices (após conversão)</th><th>Arcos</th><th>Origens</th><th>Saídas</th></tr>
+  <tr><td>Brumadinho/MG</td><td class="n">3806</td><td class="n">590</td><td class="n">842</td><td class="n">2108</td><td class="n">244</td><td class="n">7</td></tr>
+  <tr><td>Petrópolis/RJ (centro)</td><td class="n">9167</td><td class="n">871</td><td class="n">1174</td><td class="n">2341</td><td class="n">182</td><td class="n">6</td></tr>
+</table>
+<p>As tags usadas são <code>highway</code> (tipo), <code>lanes</code> (faixas), <code>oneway</code> (mão única),
+<code>surface</code> (pavimento) e <code>name</code>/<code>ref</code> (nome). Essas tags são incompletas no OSM: em
+Brumadinho só 5 de 590 vias têm <code>lanes</code>. Por isso usamos valores padrão por tipo de via (seção 4).</p>
+
+<h3>3.2 Cenários (hipóteses de planejamento)</h3>
+<p>A <b>rede é real</b>, mas a <b>zona de risco</b> e o <b>número de veículos</b> são hipóteses nossas, inspiradas
+nos desastres citados. Não são dados oficiais da Defesa Civil:</p>
+<table>
+  <tr><th>Instância</th><th>Zona de risco (centro, raio)</th><th>Veículos</th><th>Destinos</th></tr>
+  <tr><td>Brumadinho</td><td>−20,1430; −44,2000; 800 m (centro, próximo ao rio Paraopeba)</td><td class="n">4000</td><td>7 saídas da área</td></tr>
+  <tr><td>Petrópolis</td><td>−22,5070; −43,1790; 900 m (Centro Histórico, vale do rio Quitandinha)</td><td class="n">8000</td><td>6 saídas da área</td></tr>
+</table>
+<p>Na interface, a zona pode ser movida (modo <i>Zona de risco</i>), e as origens e destinos podem ser
+escolhidos à mão, por exemplo para usar escolas ou ginásios como abrigos no lugar das saídas.</p>
+
+<h3>3.3 Demais instâncias</h3>
+<ul>
+  <li><b>Bairro didático</b> (6 vértices, 10 arcos): a rede da Fig. 26.1 de Cormen et al., com capacidades ×100.
+  O fluxo máximo é conhecido (2300), então serve para conferir o algoritmo à mão;</li>
+  <li><b>Ilha sem caminho</b> (6 vértices, 7 arcos): a única ponte está interditada, então o fluxo máximo é 0;</li>
+  <li><b>Cidades sintéticas</b> (<code>fluxo/gerador.py</code>): grade com avenidas a cada 5 quadras, ruas locais
+  com 30% de mão única em sentido aleatório e 8% das ruas removidas. Com a mesma semente a cidade gerada é
+  sempre a mesma. Usamos de 10×10 até 100×100 cruzamentos (10 000 vértices, 32 768 arcos).</li>
+</ul>
+
+<h2>4. Modelagem como grafo</h2>
+<table>
+  <tr><th>Elemento</th><th>Significado</th></tr>
+  <tr><td>Vértice</td><td>Cruzamento (nó OSM compartilhado por 2 ou mais vias), extremidade de via ou ponto onde uma
+    via principal sai da área de estudo (marcado como <i>saída</i>).</td></tr>
+  <tr><td>Aresta (arco)</td><td>Trecho de rua entre dois vértices consecutivos de uma mesma via. Os nós intermediários
+    do OSM (que só servem para desenhar a curva da rua) são contraídos.</td></tr>
+  <tr><td>Direção</td><td><b>Direcionado.</b> Mão dupla vira dois arcos opostos e mão única vira um arco
+    (<code>oneway=-1</code> inverte o sentido).</td></tr>
+  <tr><td>Ponderação</td><td><b>Ponderado</b> pela capacidade <i>c(u,v)</i> em veículos/hora naquele sentido (inteiro).
+    O comprimento do trecho é guardado só como informação.</td></tr>
+  <tr><td>Origem / destino</td><td>Vários: os cruzamentos dentro da zona de risco e as saídas/abrigos. Eles são
+    ligados a uma super-origem S* e a um super-destino T* por arcos de capacidade "infinita"
+    (soma de todas as capacidades + 1).</td></tr>
+</table>
+<p><b>Capacidade.</b> <i>c = faixas_no_sentido × capacidade_por_faixa(tipo) × fator_pavimento</i>. Quando não
+existe a tag <code>lanes</code>, a via de mão dupla fica com 1 faixa por sentido (vias expressas, 2) e a de mão
+única com 1 faixa. Alças (<code>_link</code>) recebem 80% do valor da classe.</p>
+<table>
+  <tr><th>Tipo (OSM)</th><th>veíc/h/faixa</th><th>Tipo (OSM)</th><th>veíc/h/faixa</th><th>Pavimento</th><th>Fator</th></tr>
+  <tr><td>motorway</td><td class="n">2000</td><td>tertiary</td><td class="n">1000</td><td>asfalto/sem tag</td><td class="n">1,0</td></tr>
+  <tr><td>trunk</td><td class="n">1800</td><td>unclassified</td><td class="n">700</td><td>paralelepípedo</td><td class="n">0,75–0,8</td></tr>
+  <tr><td>primary</td><td class="n">1500</td><td>residential</td><td class="n">500</td><td>cascalho/não pavimentado</td><td class="n">0,6</td></tr>
+  <tr><td>secondary</td><td class="n">1200</td><td>living_street</td><td class="n">250</td><td>terra</td><td class="n">0,5</td></tr>
+</table>
+<p>Esses valores são uma simplificação. O <i>Highway Capacity Manual</i> indica cerca de 1900 veíc/h/faixa em
+condição ideal, mas vias urbanas com semáforos, conversões e pedestres operam bem abaixo disso. Por isso as
+classes locais têm valores menores.</p>
+<p><b>Hipóteses adotadas:</b> (i) regime permanente: o fluxo é uma taxa (veíc/h) e não modelamos o tempo de
+percurso nem as filas; (ii) a capacidade de um trecho não depende do fluxo nas ruas vizinhas (cruzamentos não
+são gargalos à parte); (iii) os veículos podem seguir qualquer rota (evacuação coordenada); (iv) os destinos têm
+capacidade de recepção ilimitada. Por causa de (i)–(iii), o tempo <i>N/F</i> é uma <b>cota inferior</b> do tempo
+real de evacuação.</p>
+
+<h2>5. Fundamentação e descrição do algoritmo</h2>
+<h3>5.1 Rede de fluxo, rede residual e caminho aumentante</h3>
+<p>Uma rede de fluxo é um grafo dirigido <i>G=(V,E)</i> com capacidade <i>c(e) ≥ 0</i>, uma origem <i>s</i> e um
+destino <i>t</i>. Um fluxo <i>f</i> respeita (a) <b>capacidade</b>: 0 ≤ f(e) ≤ c(e); e (b) <b>conservação</b>: em todo
+vértice diferente de s e t, o que entra é igual ao que sai. O valor |f| é o fluxo líquido que sai de s.</p>
+<p>A <b>rede residual</b> <i>G<sub>f</sub></i> tem, para cada aresta (u,v), um arco direto u→v com capacidade residual
+c(u,v) − f(u,v) (quanto ainda dá para mandar) e um arco reverso v→u com capacidade f(u,v) (quanto dá para
+"desfazer"). Um <b>caminho aumentante</b> é um caminho de s a t em G<sub>f</sub> com todos os arcos de residual
+positivo. O arco reverso é o que permite ao algoritmo corrigir escolhas ruins feitas antes.</p>
+
+<h3>5.2 Método de Ford-Fulkerson</h3>
+<pre>FORD-FULKERSON(G, s, t):
+    f(e) ← 0 para toda aresta e
+    enquanto existir caminho aumentante p de s a t em G_f:
+        g ← min{ c_f(a) : a ∈ p }            ▹ gargalo
+        para cada arco a ∈ p:
+            f(a) ← f(a) + g                    ▹ aumenta no sentido do caminho
+            f(reverso(a)) ← f(reverso(a)) − g  ▹ mantém a antissimetria
+    retorne f</pre>
+<p><b>Correção.</b> Pelo <b>teorema do fluxo máximo/corte mínimo</b>, são equivalentes: (1) f é máximo; (2) não há
+caminho aumentante em G<sub>f</sub>; (3) |f| = c(S,T) para algum corte (S,T). Quando o laço termina, tomamos
+S = vértices alcançáveis de s em G<sub>f</sub>. Todo arco que sai de S está saturado e todo arco que entra em S
+tem fluxo zero, então |f| = c(S,T). Isso prova que o fluxo é máximo e que (S,T) é um corte mínimo. O programa
+calcula esse corte e confere a igualdade em toda execução.</p>
+<p><b>Terminação.</b> Com capacidades inteiras, cada aumento soma pelo menos 1 ao fluxo, que é limitado por
+c({s}, V−{s}). Por isso exigimos capacidades inteiras (veíc/h), e a validação rejeita valores não inteiros.
+Com capacidades irracionais o método pode não terminar.</p>
+
+<h3>5.3 Escolha do caminho aumentante e complexidade</h3>
+<p>O método não diz <i>como</i> achar o caminho. Implementamos duas formas:</p>
+<table>
+  <tr><th>Estratégia</th><th>Busca</th><th>Complexidade</th><th>Comentário</th></tr>
+  <tr><td><b>DFS</b> (padrão)</td><td>Profundidade, iterativa</td><td>O(E·|f*|)</td><td>Ford-Fulkerson "clássico". O número de
+    iterações depende do valor do fluxo, ou seja, das capacidades.</td></tr>
+  <tr><td><b>BFS</b></td><td>Largura</td><td>O(V·E²)</td><td>Edmonds-Karp: sempre o caminho com menos arcos. O limite de
+    iterações (O(V·E)) não depende das capacidades.</td></tr>
+</table>
+<p>Cada busca custa O(V+E). A DFS foi feita de forma iterativa, com pilha explícita, porque os caminhos nas
+redes reais chegam a 159 arcos e a recursão do Python tem limite de 1000 chamadas, que seria estourado nas
+grades de 100×100. Escolhemos a DFS como padrão por ser a versão original do método. A BFS entra para comparar
+o efeito da escolha do caminho (seção 8.3).</p>
+
+<h3>5.4 Várias origens e vários destinos</h3>
+<p>Uma evacuação tem muitas origens e muitos destinos. Criamos a super-origem S* com arcos S*→o de
+capacidade "infinita" para cada origem o, e o super-destino T* com arcos d→T*. O fluxo máximo de S* a T* é igual
+ao maior fluxo total das origens para os destinos. Quando há uma única origem ou um único destino, o
+vértice auxiliar correspondente não é criado.</p>
+
+<h2>6. Arquitetura e implementação</h2>
+<table>
+  <tr><th>Módulo</th><th>Responsabilidade</th></tr>
+  <tr><td><code>fluxo/rede.py</code></td><td>Estrutura <code>RedeFluxo</code>: lista de adjacência com arcos em vetores paralelos. A aresta
+    k gera o arco direto 2k e o reverso 2k+1, então o reverso de <i>a</i> é <code>a ^ 1</code>, em O(1).</td></tr>
+  <tr><td><code>fluxo/ford_fulkerson.py</code></td><td><b>Algoritmo principal:</b> <code>ford_fulkerson()</code>,
+    <code>caminho_aumentante_dfs()</code>, <code>caminho_aumentante_bfs()</code>, <code>calcular_corte_minimo()</code> e
+    <code>verificar_fluxo()</code>.</td></tr>
+  <tr><td><code>fluxo/instancias.py</code></td><td>Formato JSON/CSV, validação, montagem da rede com S*/T*, execução e serialização do resultado.</td></tr>
+  <tr><td><code>fluxo/osm.py</code></td><td>Conversão dos dados OSM: recorte da área, contração dos nós de grau 2, capacidades, maior componente conexa.</td></tr>
+  <tr><td><code>fluxo/gerador.py</code></td><td>Gerador de cidades sintéticas reprodutíveis.</td></tr>
+  <tr><td><code>fluxo/servidor.py</code>, <code>app.py</code></td><td>Servidor HTTP (biblioteca padrão) com API JSON: <code>/api/instancias</code>, <code>/api/executar</code>,
+    <code>/api/comparar</code>, <code>/api/gerar</code>, <code>/api/importar</code>.</td></tr>
+  <tr><td><code>web/</code></td><td>Interface em JavaScript puro: desenho em <code>&lt;canvas&gt;</code> com zoom/arrasto, edição do cenário,
+    passo a passo dos caminhos e visões de capacidade, fluxo e rede residual.</td></tr>
+</table>
+<p><b>Decisões de implementação.</b> (1) <b>Nenhuma biblioteca de grafos</b> e nenhuma dependência externa: o
+projeto roda com <code>python3 app.py</code>, sem instalar nada e sem internet, o que diminui o risco na
+apresentação. (2) O algoritmo roda no servidor em Python, e a interface só desenha. Ela recebe a lista de
+caminhos aumentantes (arcos, sentido e gargalo) e reconstrói o fluxo em qualquer passo <i>k</i> somando os <i>k</i>
+primeiros caminhos. Assim o passo a passo não precisa executar o algoritmo de novo. (3) Para a rede residual,
+cada rua mostra o residual direto c−f (azul, no sentido da rua) e o reverso f (laranja tracejado, no sentido
+oposto). (4) Ruas de mão dupla são desenhadas com um deslocamento lateral para que os dois sentidos apareçam.</p>
+
+<div class="dois">
+<figure><img src="img/didatico_fluxo.png"><figcaption>Figura 1 — Bairro didático: fluxo final (f/c), corte mínimo em magenta (A→C, D→C, D→Abrigo = 1200+700+400 = 2300).</figcaption></figure>
+<figure><img src="img/didatico_residual.png"><figcaption>Figura 2 — Rede residual após o 3º caminho aumentante (em verde). Arcos laranja tracejados são os reversos.</figcaption></figure>
+</div>
+<figure><img src="img/petropolis_fluxo.png"><figcaption>Figura 3 — Petrópolis: zona de risco (círculo), fluxo por rua (verde → vermelho = saturada), corte mínimo em magenta, verificações e lista de caminhos aumentantes.</figcaption></figure>
+
+<h2>7. Metodologia de testes</h2>
+<p>Os testes automatizados ficam em <code>tests/test_ford_fulkerson.py</code> (28 testes, <code>unittest</code>) e rodam em cerca
+de 1 s com <code>python3 -m unittest discover -s tests -v</code>. Eles cobrem:</p>
+<table>
+  <tr><th>Categoria</th><th>Casos</th></tr>
+  <tr><td>Resultado verificável</td><td>Rede do Cormen (2300) nas duas estratégias; aresta única; gargalo em série; arestas paralelas que se somam;
+    caso em que o fluxo máximo (20) <b>só é atingido cancelando fluxo</b> por um arco reverso.</td></tr>
+  <tr><td>Sem solução</td><td>Ilha com ponte interditada (0) e, sem a interdição, 1200; destino alcançável só no sentido contrário (mão única); capacidade zero.</td></tr>
+  <tr><td>Fronteira / entrada inválida</td><td>Origem = destino; sem origem; capacidade negativa ou fracionária; vértice inexistente; laço; aresta entrando na origem;
+    capacidades da ordem de 10¹²; JSON e CSV malformados; tentativa de ler arquivo fora da pasta pela API.</td></tr>
+  <tr><td>Validação independente</td><td><b>200 grafos aleatórios</b> (2 a 8 vértices): o fluxo do FF é comparado ao <b>corte mínimo por força bruta</b>
+    (todas as 2<sup>n−2</sup> partições). Em todos os casos também conferimos capacidade, conservação e valor.</td></tr>
+  <tr><td>Instâncias reais</td><td>Em todas as instâncias: DFS e BFS dão o mesmo valor e as 4 verificações passam. Interditar a via de
+    maior capacidade do corte reduz o fluxo em no máximo a capacidade dela.</td></tr>
+  <tr><td>Múltiplas origens</td><td>S*/T* automáticos dão o mesmo resultado que a super-origem montada à mão.</td></tr>
+  <tr><td>Entradas e API</td><td>CSV com mão dupla, gerador reprodutível, tabela de capacidades OSM, requisições HTTP.</td></tr>
+</table>
+<p>Além disso, <b>toda execução</b> na interface mostra a verificação da solução: capacidade respeitada,
+conservação em todos os cruzamentos, saída de S igual à chegada em T e capacidade do corte igual ao fluxo.
+Os experimentos de desempenho (<code>scripts/benchmark.py</code>) usam a mediana de 3 execuções, num MacBook com
+Python 3.9.</p>
+
+<h2>8. Resultados obtidos</h2>
+<h3>8.1 Instâncias do repositório</h3>
+<table>
+  <tr><th>Instância</th><th>V</th><th>E</th><th>Fluxo máx. (veíc/h)</th><th>Iter. DFS</th><th>Iter. BFS</th><th>ms DFS</th><th>ms BFS</th><th>Vias no corte</th><th>Tempo mín. evac.</th></tr>
+  <tr><td>Bairro didático</td><td class="n">6</td><td class="n">10</td><td class="n">2300</td><td class="n">6</td><td class="n">3</td><td class="n">0,04</td><td class="n">0,02</td><td class="n">3</td><td class="n">26,1 min (1000 v.)</td></tr>
+  <tr><td>Ilha sem caminho</td><td class="n">6</td><td class="n">7</td><td class="n">0</td><td class="n">0</td><td class="n">0</td><td class="n">0,00</td><td class="n">0,00</td><td class="n">0</td><td class="n">∞ (sem rota)</td></tr>
+  <tr><td>Brumadinho</td><td class="n">842</td><td class="n">2108</td><td class="n">7120</td><td class="n">70</td><td class="n">16</td><td class="n">35,8</td><td class="n">6,8</td><td class="n">7</td><td class="n">33,7 min (4000 v.)</td></tr>
+  <tr><td>Petrópolis</td><td class="n">1174</td><td class="n">2341</td><td class="n">7750</td><td class="n">88</td><td class="n">8</td><td class="n">43,5</td><td class="n">3,8</td><td class="n">4</td><td class="n">61,9 min (8000 v.)</td></tr>
+  <tr><td>Sintética 40×40</td><td class="n">1600</td><td class="n">5182</td><td class="n">48800</td><td class="n">433</td><td class="n">60</td><td class="n">163,7</td><td class="n">43,5</td><td class="n">47</td><td class="n">14,8 min (12000 v.)</td></tr>
+</table>
+<p><b>Brumadinho.</b> O gargalo são 7 vias de saída: Estrada Pólo Turístico Inhotim (1500), Estrada José Ribeiro
+Filho (1200), Avenida Inhotim (1200), Avenida Itaguá (1000), Estrada Brumadinho–Ponte das Almorreimas (1000),
+Rodovia José Silva Martins (720, não pavimentada) e Rua Antônio Caetano dos Santos (500). A soma dá 7120, igual
+ao fluxo. Ou seja, o limite não está dentro do centro, e sim nas poucas estradas que saem da cidade.</p>
+<p><b>Petrópolis.</b> O corte tem só 4 vias: Av. Barão do Rio Branco (3000), Rua Bingen (3000), Rua Quissamã
+(1000) e Av. Getúlio Vargas (750). Com 8000 veículos, a evacuação levaria no mínimo cerca de 1 hora, o que
+mostra como a geografia de vale restringe as rotas.</p>
+
+<h3>8.2 Simulação de cenários</h3>
+<table>
+  <tr><th>Cenário</th><th>Brumadinho</th><th>Petrópolis</th></tr>
+  <tr><td>Base</td><td class="n">7120 veíc/h — 33,7 min</td><td class="n">7750 veíc/h — 61,9 min</td></tr>
+  <tr><td>Interditar a maior via do corte</td><td class="n">5620 (Estr. Inhotim) — 42,7 min</td><td class="n">4750 (Av. Barão do Rio Branco) — 101,1 min</td></tr>
+  <tr><td>Contrafluxo nas vias do corte</td><td class="n">8120 — 29,6 min (+14%)</td><td class="n">7750 — sem ganho</td></tr>
+</table>
+<p>Em Petrópolis, perder a Av. Barão do Rio Branco aumenta o tempo mínimo em 63%. O contrafluxo (usar também a
+faixa do sentido oposto) ajuda em Brumadinho. Em Petrópolis não muda nada. As duas vias principais do corte (Av. Barão do
+Rio Branco e Rua Bingen) já são de mão única no sentido da saída, então não há faixa oposta para inverter. Nas
+outras duas, ganhar capacidade só faz aparecer outro corte com a mesma capacidade (7750) logo à frente. Nesse
+caso, só criar ou liberar outras rotas aumentaria a vazão. Esse tipo de conclusão é o que o corte mínimo dá ao planejador.</p>
+
+<h3>8.3 Desempenho e crescimento do custo</h3>
+<table>
+  <tr><th>Grade</th><th>V</th><th>E</th><th>Fluxo</th><th>Iter. DFS</th><th>Iter. BFS</th><th>ms DFS</th><th>ms BFS</th></tr>
+  <tr><td>10×10</td><td class="n">100</td><td class="n">305</td><td class="n">14100</td><td class="n">52</td><td class="n">13</td><td class="n">3,6</td><td class="n">0,7</td></tr>
+  <tr><td>20×20</td><td class="n">400</td><td class="n">1231</td><td class="n">18100</td><td class="n">146</td><td class="n">21</td><td class="n">21,2</td><td class="n">3,9</td></tr>
+  <tr><td>30×30</td><td class="n">900</td><td class="n">2848</td><td class="n">37800</td><td class="n">307</td><td class="n">43</td><td class="n">98,5</td><td class="n">20,0</td></tr>
+  <tr><td>40×40</td><td class="n">1600</td><td class="n">5116</td><td class="n">47800</td><td class="n">422</td><td class="n">59</td><td class="n">183,6</td><td class="n">44,5</td></tr>
+  <tr><td>50×50</td><td class="n">2500</td><td class="n">8061</td><td class="n">61400</td><td class="n">549</td><td class="n">82</td><td class="n">325,5</td><td class="n">98,3</td></tr>
+  <tr><td>60×60</td><td class="n">3600</td><td class="n">11696</td><td class="n">70500</td><td class="n">653</td><td class="n">86</td><td class="n">475,8</td><td class="n">153,4</td></tr>
+  <tr><td>80×80</td><td class="n">6400</td><td class="n">20921</td><td class="n">98200</td><td class="n">905</td><td class="n">150</td><td class="n">1236,0</td><td class="n">478,7</td></tr>
+  <tr><td>100×100</td><td class="n">10000</td><td class="n">32768</td><td class="n">112800</td><td class="n">1042</td><td class="n">160</td><td class="n">2005,4</td><td class="n">812,5</td></tr>
+</table>
+<div class="dois">
+  <figure><img src="resultados/escala_tempo.svg"><figcaption>Figura 4 — Tempo vs. número de vértices.</figcaption></figure>
+  <figure><img src="resultados/escala_iteracoes.svg"><figcaption>Figura 5 — Caminhos aumentantes vs. número de vértices.</figcaption></figure>
+</div>
+<p>O tempo cresce de forma superlinear: 100 vezes mais vértices custam cerca de 550 vezes mais tempo na DFS. Isso
+bate com o custo de cada iteração (O(V+E)) multiplicado pelo número de iterações, que também cresce com a rede.
+A DFS fez de 4 a 11 vezes mais iterações que a BFS. Os caminhos da DFS são longos e "tortos" (média de 119 arcos
+em Petrópolis contra 20 da BFS) e terminam em gargalos pequenos (o menor foi de 10 veíc/h). A BFS acha caminhos
+curtos que saturam ruas inteiras de uma vez. Mesmo assim, a maior instância testada (10 000 cruzamentos) foi
+resolvida em 2 s com DFS e 0,8 s com BFS, o que é rápido o bastante para uso interativo.</p>
+<figure style="width:70%;margin:auto"><img src="resultados/capacidade_iteracoes.svg"><figcaption>Figura 6 — Mesmo grafo (grade 15×15) com capacidades sorteadas em [1, U].</figcaption></figure>
+<p>Na Figura 6 o grafo é fixo e só muda a faixa das capacidades. A DFS foi de 72 iterações (U = 10) para 420–490
+iterações a partir de U = 1000. A BFS ficou entre 47 e 78. Isso ilustra a diferença entre
+O(E·|f*|), que depende das capacidades, e O(V·E²), que não depende. No pior caso teórico (o exemplo clássico com
+um arco de capacidade 1 entre dois caminhos de capacidade C), a DFS pode precisar de 2C iterações. Nas redes
+viárias isso não aconteceu, porque as capacidades são múltiplos de poucos valores (250, 500, 1000...).</p>
+
+<figure><img src="img/brumadinho_fluxo.png" style="width:85%"><figcaption>Figura 7 — Brumadinho: fluxo máximo de 7120 veíc/h e as 7 estradas do corte mínimo.</figcaption></figure>
+
+<h2>9. Limitações e possibilidades de melhoria</h2>
+<ul>
+  <li><b>Modelo estático.</b> O fluxo máximo trata vazão em regime permanente. Ele não modela o tempo de percurso,
+  as filas nem a chegada gradual dos veículos. Uma extensão natural é o <i>fluxo dinâmico</i> em rede expandida no
+  tempo (<i>time-expanded network</i>), que dá o número de veículos evacuados até cada instante.</li>
+  <li><b>Capacidades estimadas.</b> As tags do OSM são incompletas (poucas têm <code>lanes</code>), e a tabela de
+  capacidades é simplificada. Ela não considera declividade (importante em Petrópolis), semáforos, largura real
+  nem estado da via. Contagens de tráfego da prefeitura ou do DNIT dariam valores melhores.</li>
+  <li><b>Cruzamentos sem capacidade própria.</b> Na prática, cruzamentos também são gargalos. Isso pode ser
+  modelado dividindo cada vértice em v<sub>in</sub>→v<sub>out</sub> com a capacidade do cruzamento.</li>
+  <li><b>Cenários hipotéticos.</b> A zona de risco e o número de veículos são suposições nossas. Um uso real
+  deveria partir das manchas de inundação e das áreas de risco oficiais (CPRM/SGB, Defesa Civil) e de dados do IBGE.</li>
+  <li><b>Desempenho.</b> A DFS clássica é a mais lenta das variantes. Para cidades inteiras (centenas de milhares
+  de arestas), algoritmos como Dinic ou push-relabel seriam mais adequados. Optamos pelo Ford-Fulkerson porque
+  é o algoritmo exigido no tema e porque os caminhos aumentantes são fáceis de mostrar e explicar.</li>
+  <li><b>Interface.</b> Não há mapa de fundo (o desenho usa só as coordenadas, para funcionar sem internet).
+  Daria para incluir tiles do OSM quando houver conexão.</li>
+</ul>
+
+<h2>10. Contribuições individuais</h2>
+<table>
+  <tr><th>Integrante</th><th>Contribuições</th></tr>
+  <tr><td>Pedro Henrique Teixeira Moroni</td><td>implementação do algoritmo (<code>ford_fulkerson.py</code>, <code>rede.py</code>) e testes automatizados</td></tr>
+  <tr><td>Jonathans David da Silva P Jr</td><td>coleta e conversão dos dados do OpenStreetMap (<code>osm.py</code>, scripts), tabela de capacidades e experimentos de desempenho</td></tr>
+  <tr><td>Guilherme de Oliveira Lazari</td><td>interface web (<code>web/</code>): desenho da rede, passo a passo, rede residual e edição do cenário</td></tr>
+  <tr><td>Lucas Soares de Almeida</td><td>servidor e formato das instâncias, gerador sintético, importação JSON/CSV, relatório e slides</td></tr>
+</table>
+
+<h2>11. Uso de ferramentas de IA</h2>
+<p>Como o enunciado permite, usamos uma ferramenta de IA generativa (Claude, da Anthropic) como apoio para gerar
+partes do código (principalmente a interface e os scripts auxiliares), sugerir casos de teste e revisar o texto
+deste relatório. O grupo revisou todo o material gerado, executou e validou os resultados (testes automatizados,
+comparação com força bruta e com o exemplo conhecido do Cormen) e conseguiu explicar cada módulo. As escolhas de
+modelagem (problema, hipóteses, cenários e tabela de capacidades) foram discutidas e aprovadas pelo grupo.</p>
+
+<h2>12. Referências</h2>
+<ol>
+  <li>CORMEN, T. H.; LEISERSON, C. E.; RIVEST, R. L.; STEIN, C. <i>Introduction to Algorithms</i>. 3. ed. MIT Press, 2009. Cap. 26 — Maximum Flow.</li>
+  <li>FORD, L. R.; FULKERSON, D. R. Maximal flow through a network. <i>Canadian Journal of Mathematics</i>, v. 8, p. 399–404, 1956.</li>
+  <li>EDMONDS, J.; KARP, R. M. Theoretical improvements in algorithmic efficiency for network flow problems. <i>Journal of the ACM</i>, v. 19, n. 2, p. 248–264, 1972.</li>
+  <li>HAMACHER, H. W.; TJANDRA, S. A. Mathematical modelling of evacuation problems: a state of the art. In: <i>Pedestrian and Evacuation Dynamics</i>. Springer, 2002.</li>
+  <li>TRANSPORTATION RESEARCH BOARD. <i>Highway Capacity Manual</i>. 6. ed. Washington, DC, 2016.</li>
+  <li>OPENSTREETMAP CONTRIBUTORS. OpenStreetMap / Overpass API. Disponível em: https://www.openstreetmap.org. Licença ODbL. Acesso em: 4 nov. 2026.</li>
+  <li>KLEINBERG, J.; TARDOS, É. <i>Algorithm Design</i>. Pearson, 2006. Cap. 7 — Network Flow.</li>
+</ol>
+</body>
+</html>

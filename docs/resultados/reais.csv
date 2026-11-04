@@ -1,0 +1,11 @@
+instancia,vertices,arestas,origens,destinos,estrategia,fluxo,iteracoes,tempo_ms,arestas_corte,tempo_evacuacao_min
+01_bairro_didatico.json,6,10,1,1,dfs,2300,6,0.043,3,26.1
+01_bairro_didatico.json,6,10,1,1,bfs,2300,3,0.018,3,26.1
+02_ilha_sem_caminho.json,6,7,1,1,dfs,0,0,0.004,0,
+02_ilha_sem_caminho.json,6,7,1,1,bfs,0,0,0.002,0,
+03_brumadinho.json,842,2108,244,7,dfs,7120,70,35.826,7,33.7
+03_brumadinho.json,842,2108,244,7,bfs,7120,16,6.772,7,33.7
+04_petropolis.json,1174,2341,182,6,dfs,7750,88,43.506,4,61.9
+04_petropolis.json,1174,2341,182,6,bfs,7750,8,3.79,4,61.9
+05_cidade_sintetica_40x40.json,1600,5182,208,93,dfs,48800,433,163.717,47,14.8
+05_cidade_sintetica_40x40.json,1600,5182,208,93,bfs,48800,60,43.532,47,14.8
